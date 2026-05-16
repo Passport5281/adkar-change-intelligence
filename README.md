@@ -54,12 +54,24 @@ cd backend && npm install
 cd ../frontend && npm install
 ```
 
-### 2. Configure the backend
+### 2. Get an Anthropic API key
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and create a free account
+2. Navigate to **API Keys** and click **Create Key**
+3. Copy the key — you'll need it in the next step
+
+### 3. Configure the backend
 
 ```bash
 cd backend
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+```
+
+Open `backend/.env` and replace `your_anthropic_api_key_here` with the key you just copied:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+PORT=4000
 ```
 
 ### 3. Start both servers

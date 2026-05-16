@@ -21,7 +21,14 @@ router.post("/analyze", requireApiKey, async (req, res) => {
   try {
     scraped = await scrapeCompany(url);
   } catch (err) {
-    return res.status(422).json({ error: `Could not scrape URL: ${err.message}` });
+    scraped = { url, rawText: "", scrapeFailed: true };
+  }
+
+  if (scraped.scrapeFailed && !scraped.rawText) {
+    // For vendor analysis we need some signal — surface a helpful error
+    return res.status(422).json({
+      error: "Could not retrieve content from that URL. Try the /about or /product page directly, or check the URL is correct.",
+    });
   }
 
   let analysis;
@@ -69,7 +76,8 @@ router.post("/engagement", requireApiKey, async (req, res) => {
   try {
     scraped = await scrapeCompany(customerUrl);
   } catch (err) {
-    return res.status(422).json({ error: `Could not scrape customer URL: ${err.message}` });
+    // Scrape totally failed (bad URL, DNS error, etc.) — use the URL alone as fallback
+    scraped = { url: customerUrl, rawText: "", scrapeFailed: true };
   }
 
   let result;

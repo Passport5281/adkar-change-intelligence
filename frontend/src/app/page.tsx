@@ -109,6 +109,7 @@ export default function HomePage() {
   const [activeVendorId, setActiveVendorIdState] = useState<string | null>(null);
   const [activeEngagementId, setActiveEngagementIdState] = useState<string | null>(null);
   const [analyzerLoading, setAnalyzerLoading] = useState(false);
+  const [analyzerStep, setAnalyzerStep] = useState("");
   const [analyzerError, setAnalyzerError] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("overall");
   const [sortMode, setSortMode] = useState<SortMode>("impact");
@@ -157,8 +158,11 @@ export default function HomePage() {
   async function handleAnalyzeVendor(url: string) {
     setAnalyzerLoading(true);
     setAnalyzerError("");
+    setAnalyzerStep("Scraping website…");
+    const stepTimer = setTimeout(() => setAnalyzerStep("Generating ADKAR plan…"), 4000);
     try {
       const result = await analyzeCompany(url);
+      clearTimeout(stepTimer);
       const id = saveVendor(result);
       setVendors(getAllVendors());
       setActiveVendorIdState(id);
@@ -166,9 +170,11 @@ export default function HomePage() {
       setViewMode("overall");
       setFilterLevel("");
     } catch (err) {
+      clearTimeout(stepTimer);
       setAnalyzerError(err instanceof Error ? err.message : "Analysis failed.");
     } finally {
       setAnalyzerLoading(false);
+      setAnalyzerStep("");
     }
   }
 
@@ -307,8 +313,8 @@ export default function HomePage() {
                   <div className="w-5 h-5 rounded-full bg-indigo-600 animate-pulse" />
                 </div>
               </div>
-              <p className="text-sm font-semibold text-slate-700">Analysing vendor…</p>
-              <p className="text-xs text-slate-400">Scraping website · Detecting products &amp; ICP · Generating ADKAR plan</p>
+              <p className="text-sm font-semibold text-slate-700">{analyzerStep || "Analysing vendor…"}</p>
+              <p className="text-xs text-slate-400">This takes 15–30 seconds · Scraping · Detecting products &amp; ICP · Building ADKAR plan</p>
             </div>
           )}
 

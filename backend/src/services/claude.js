@@ -91,7 +91,7 @@ ${rawText}
 --- END CONTENT ---`;
 
   const response = await client.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-sonnet-4-6",
     max_tokens: 16000,
     system: [
       {
@@ -208,7 +208,7 @@ ${newPersona.context ? `Additional context from working with this company:\n${ne
 Generate the complete ADKAR JSON for this single persona.`;
 
   const response = await client.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-sonnet-4-6",
     max_tokens: 4096,
     system: [
       {
@@ -312,6 +312,10 @@ Return this exact JSON schema:
 }`;
 
 async function generateEngagementPersonas({ vendor, customerText, customerUrl }) {
+  const customerContext = customerText?.trim()
+    ? `CUSTOMER COMPANY (scraped from ${customerUrl}):\n--- BEGIN CUSTOMER CONTENT ---\n${customerText}\n--- END CUSTOMER CONTENT ---`
+    : `CUSTOMER COMPANY URL: ${customerUrl}\n\nNote: The customer's website could not be scraped (likely bot protection). Use your training knowledge about this company — their industry, scale, typical org structure, and business model — to generate the personas.`;
+
   const userMessage = `Generate a customer-specific ADKAR change management plan for the following engagement.
 
 VENDOR BEING ADOPTED:
@@ -321,15 +325,12 @@ Value Proposition: ${vendor.company.valueProposition}
 ICP: ${vendor.company.icp.join("; ")}
 Industry: ${vendor.company.industry}
 
-CUSTOMER COMPANY (scraped from ${customerUrl}):
---- BEGIN CUSTOMER CONTENT ---
-${customerText}
---- END CUSTOMER CONTENT ---
+${customerContext}
 
 Generate personas that are specific to THIS customer adopting ${vendor.company.name}'s product. Use their actual business context, not generic descriptions.`;
 
   const response = await client.messages.create({
-    model: "claude-opus-4-7",
+    model: "claude-sonnet-4-6",
     max_tokens: 16000,
     system: [
       {
