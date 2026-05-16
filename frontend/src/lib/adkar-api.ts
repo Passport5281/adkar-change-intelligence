@@ -13,8 +13,48 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T;
 }
 
-export function analyzeCompany(url: string): Promise<AdkarAnalysis> {
-  return post<AdkarAnalysis>("/adkar/analyze", { url });
+export async function analyzeCompany(
+  url: string,
+  onStep: (msg: string) => void,
+  onProgress: (chars: number) => void
+): Promise<AdkarAnalysis> {
+  const res = await fetch(`${BASE}/adkar/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!res.body) throw new Error("No response stream from server.");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+
+    for (const part of parts) {
+      if (!part.startsWith("data: ")) continue;
+      const event = JSON.parse(part.slice(6)) as {
+        type: "step" | "progress" | "done" | "error";
+        message?: string;
+        chars?: number;
+        result?: AdkarAnalysis;
+      };
+
+      if (event.type === "step" && event.message) onStep(event.message);
+      if (event.type === "progress" && event.chars) onProgress(event.chars);
+      if (event.type === "error") throw new Error(event.message ?? "Analysis failed.");
+      if (event.type === "done" && event.result) return event.result;
+    }
+  }
+
+  throw new Error("Stream ended without a result.");
 }
 
 export function analyzeEngagement(

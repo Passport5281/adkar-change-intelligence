@@ -83,33 +83,32 @@ Return this exact JSON schema:
   ]
 }`;
 
-async function generateAdkar(companyUrl, rawText) {
+async function generateAdkarStream(companyUrl, rawText, onProgress) {
   const userMessage = `Analyse the following content scraped from ${companyUrl} and generate the ADKAR change management plan.
 
 --- SCRAPED CONTENT ---
 ${rawText}
 --- END CONTENT ---`;
 
-  const response = await client.messages.create({
+  const stream = client.messages.stream({
     model: "claude-sonnet-4-6",
     max_tokens: 16000,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
+    system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
     messages: [{ role: "user", content: userMessage }],
   });
 
-  if (response.stop_reason === "max_tokens") {
-    throw new Error(
-      "Response was cut off (too many personas or too much detail). Try a more focused URL."
-    );
+  let fullText = "";
+  stream.on("text", (chunk) => {
+    fullText += chunk;
+    onProgress(fullText.length);
+  });
+
+  const msg = await stream.finalMessage();
+  if (msg.stop_reason === "max_tokens") {
+    throw new Error("Response was cut off. Try a more focused URL.");
   }
 
-  return parseJsonResponse(response.content[0].text);
+  return parseJsonResponse(fullText);
 }
 
 const PERSONA_SYSTEM_PROMPT = `You are a senior change management consultant applying the ADKAR framework (Awareness, Desire, Knowledge, Ability, Reinforcement).
@@ -349,4 +348,4 @@ Generate personas that are specific to THIS customer adopting ${vendor.company.n
   return parseJsonResponse(response.content[0].text);
 }
 
-module.exports = { generateAdkar, generatePersonaAdkar, generateEngagementPersonas };
+module.exports = { generateAdkarStream, generatePersonaAdkar, generateEngagementPersonas };

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { scrapeCompany } = require("../services/scraper");
-const { generateAdkar, generatePersonaAdkar, generateEngagementPersonas } = require("../services/claude");
+const { generateAdkarStream, generatePersonaAdkar, generateEngagementPersonas } = require("../services/claude");
 
 function requireApiKey(req, res, next) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -10,35 +10,47 @@ function requireApiKey(req, res, next) {
   next();
 }
 
-// Full company analysis
+// Full company analysis — streams SSE so the UI shows real-time progress
 router.post("/analyze", requireApiKey, async (req, res) => {
   const { url } = req.body;
   if (!url || typeof url !== "string") {
     return res.status(400).json({ error: "url is required" });
   }
 
-  let scraped;
-  try {
-    scraped = await scrapeCompany(url);
-  } catch (err) {
-    scraped = { url, rawText: "", scrapeFailed: true };
-  }
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
 
-  if (scraped.scrapeFailed && !scraped.rawText) {
-    // For vendor analysis we need some signal — surface a helpful error
-    return res.status(422).json({
-      error: "Could not retrieve content from that URL. Try the /about or /product page directly, or check the URL is correct.",
+  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    send({ type: "step", message: "Scraping website…" });
+
+    let scraped;
+    try {
+      scraped = await scrapeCompany(url);
+    } catch {
+      scraped = { url, rawText: "", scrapeFailed: true };
+    }
+
+    if (scraped.scrapeFailed && !scraped.rawText) {
+      send({ type: "error", message: "Could not retrieve content from that URL. Try the /about or /product page directly." });
+      return res.end();
+    }
+
+    send({ type: "step", message: "Generating ADKAR plan…" });
+
+    const result = await generateAdkarStream(scraped.url, scraped.rawText, (chars) => {
+      send({ type: "progress", chars });
     });
-  }
 
-  let analysis;
-  try {
-    analysis = await generateAdkar(scraped.url, scraped.rawText);
+    send({ type: "done", result: { ...result, company: { ...result.company, url: scraped.url } } });
   } catch (err) {
-    return res.status(500).json({ error: `AI analysis failed: ${err.message}` });
+    send({ type: "error", message: err.message });
   }
 
-  res.json({ ...analysis, company: { ...analysis.company, url: scraped.url } });
+  res.end();
 });
 
 // Add or refresh a single persona
