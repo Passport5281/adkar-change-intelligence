@@ -9,9 +9,10 @@ import {
   saveEngagement, getEngagementById, deleteEngagement,
   getActiveVendorId, setActiveVendorId,
   getActiveEngagementId, setActiveEngagementId, clearActiveEngagement,
-  addPersonaToVendor, updatePersonaInVendor,
-  addPersonaToEngagement, updatePersonaInEngagement,
+  addPersonaToVendor, updatePersonaInVendor, deletePersonaFromVendor,
+  addPersonaToEngagement, updatePersonaInEngagement, deletePersonaFromEngagement,
 } from "@/lib/adkar-store";
+import { exportPersonaToPDF } from "@/lib/export-persona";
 import UrlInput from "@/components/adkar/UrlInput";
 import CompanyCard from "@/components/adkar/CompanyCard";
 import CustomerCard from "@/components/adkar/CustomerCard";
@@ -277,6 +278,22 @@ export default function HomePage() {
     setPersonaToRefresh(null);
   }
 
+  function handlePersonaDeleted(persona: PersonaAdkar) {
+    if (!activeVendorId) return;
+    if (activeEngagementId) {
+      deletePersonaFromEngagement(activeVendorId, activeEngagementId, persona.id);
+    } else {
+      deletePersonaFromVendor(activeVendorId, persona.id);
+    }
+    setVendors(getAllVendors());
+  }
+
+  function handlePersonaExport(persona: PersonaAdkar) {
+    const vendorName = activeVendor?.vendorAnalysis.company.name ?? "";
+    const customerName = activeEngagement?.customer.name;
+    exportPersonaToPDF(persona, vendorName, customerName);
+  }
+
   const hasVendors = vendors.length > 0;
   const hasActiveContent = !!activeVendor;
   const isEngagementView = !!activeEngagement;
@@ -446,7 +463,9 @@ export default function HomePage() {
                   ) : (
                     sortedPersonas.map((persona) => (
                       <PersonaCard key={persona.id} persona={persona}
-                        onRefresh={(p) => setPersonaToRefresh(p)} />
+                        onRefresh={(p) => setPersonaToRefresh(p)}
+                        onDelete={handlePersonaDeleted}
+                        onExport={handlePersonaExport} />
                     ))
                   )}
                   <button onClick={() => setShowAddPersona(true)}

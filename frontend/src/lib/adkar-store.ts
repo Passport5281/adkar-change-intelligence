@@ -122,6 +122,15 @@ export function updatePersonaInVendor(vendorId: string, personaId: string, updat
   setVendors(vendors);
 }
 
+export function deletePersonaFromVendor(vendorId: string, personaId: string): void {
+  const vendors = getVendors();
+  const vIdx = vendors.findIndex((v) => v.id === vendorId);
+  if (vIdx < 0) return;
+  vendors[vIdx].vendorAnalysis.personas = vendors[vIdx].vendorAnalysis.personas.filter((p) => p.id !== personaId);
+  vendors[vIdx].vendorAnalysis.overallImpact.totalPersonasImpacted = vendors[vIdx].vendorAnalysis.personas.length;
+  setVendors(vendors);
+}
+
 // ─── Engagement CRUD ──────────────────────────────────────────────────────────
 
 export function saveEngagement(
@@ -207,6 +216,17 @@ export function updatePersonaInEngagement(
   const pIdx = vendors[vIdx].engagements[eIdx].personas.findIndex((p) => p.id === personaId);
   if (pIdx < 0) return;
   vendors[vIdx].engagements[eIdx].personas[pIdx] = updated;
+  setVendors(vendors);
+}
+
+export function deletePersonaFromEngagement(vendorId: string, engagementId: string, personaId: string): void {
+  const vendors = getVendors();
+  const vIdx = vendors.findIndex((v) => v.id === vendorId);
+  if (vIdx < 0) return;
+  const eIdx = vendors[vIdx].engagements.findIndex((e) => e.id === engagementId);
+  if (eIdx < 0) return;
+  vendors[vIdx].engagements[eIdx].personas = vendors[vIdx].engagements[eIdx].personas.filter((p) => p.id !== personaId);
+  vendors[vIdx].engagements[eIdx].overallImpact.totalPersonasImpacted = vendors[vIdx].engagements[eIdx].personas.length;
   setVendors(vendors);
 }
 
